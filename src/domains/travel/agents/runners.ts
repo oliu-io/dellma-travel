@@ -1,33 +1,22 @@
-import { City, LatentFactor, ForecastDistribution, PreferenceWeights, UtilityScore, ScoutReport, CalibrationData, BTOptimizerResult, DestinationContext } from "@/types";
+// ============================================================================
+// Travel Domain Agent Runners
+// ============================================================================
+
+import type { LatentFactor, ForecastDistribution, UtilityScore, BTOptimizerResult } from "@/lib/dellma/types";
+import type { City, ScoutReport, CalibrationData, DestinationContext } from "../types";
+import { callLLM } from "@/lib/dellma/agents";
 import {
   buildScoutPrompt,
   buildStateEnumerationPrompt,
   buildForecasterPrompt,
-  buildOptimizerPrompt,
   buildAdvocatePrompt,
 } from "./prompts";
 import {
   scoutSchema,
   stateEnumerationSchema,
   forecasterSchema,
-  optimizerSchema,
   advocateSchema,
 } from "./schemas";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function callLLM(prompt: string, schema: Record<string, any>): Promise<any> {
-  const res = await fetch("/api/llm", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt, schema }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "Unknown error" }));
-    throw new Error(err.error ?? `LLM call failed: ${res.status}`);
-  }
-  const data = await res.json();
-  return data.result;
-}
 
 // --- Destination context: Wikipedia + REST Countries ---
 
@@ -87,7 +76,6 @@ export async function runForecasterAgent(
 ): Promise<ForecastDistribution[]> {
   const prompt = buildForecasterPrompt(cities, factors, tripParams, calibrationData);
   const result = await callLLM(prompt, forecasterSchema);
-  // Convert array format [{valueId, probability}] to Record<string, number>
   return result.forecasts.map(
     (f: { factorId: string; cityId: string; probabilities: { valueId: string; probability: number }[] }) => ({
       factorId: f.factorId,
@@ -99,33 +87,14 @@ export async function runForecasterAgent(
   );
 }
 
-export async function runOptimizerAgent(
-  cities: City[],
-  forecasts: ForecastDistribution[],
-  factors: LatentFactor[],
-  weights: PreferenceWeights
-): Promise<UtilityScore[]> {
-  const prompt = buildOptimizerPrompt(cities, forecasts, factors, weights);
-  const result = await callLLM(prompt, optimizerSchema);
-  return result.utilities;
-}
-
 // --- DeLLMa Bradley-Terry Optimizer ---
-// Replaces the LLM-vibes optimizer with real EU computation:
-// 1. Sample states from joint forecast distribution
-// 2. Build overlapping microbatches of (state, action) tuples
-// 3. LLM ranks each microbatch
-// 4. Fit Bradley-Terry model via choix
-// 5. Marginalize U(s,a) over states to get EU(a)
 
 export async function runBTOptimizer(
   cities: City[],
   factors: LatentFactor[],
   forecasts: ForecastDistribution[],
-  weights: PreferenceWeights,
+  weights: Record<string, number>,
 ): Promise<BTOptimizerResult> {
-  // Restructure forecasts into the format the Python script expects:
-  // factor.forecasts = { cityId: { valueId: prob, ... }, ... }
   const factorsWithForecasts = factors.map(f => {
     const factorForecasts: Record<string, Record<string, number>> = {};
     for (const city of cities) {
@@ -144,7 +113,6 @@ export async function runBTOptimizer(
     };
   });
 
-  // Action labels for readable prompts
   const actionLabels: Record<string, string> = {};
   for (const c of cities) {
     actionLabels[c.id] = `${c.name}, ${c.country}`;
@@ -161,6 +129,8 @@ export async function runBTOptimizer(
       nSamples: 64,
       batchSize: 16,
       overlap: 4,
+      systemPrompt: "You are a preference evaluator in a decision-making system. You rank hypothetical travel scenarios by overall desirability to a traveler.",
+      scenarioPrefix: "Travel to",
     }),
   });
 
@@ -189,15 +159,13 @@ export async function runAdvocateAgent(
   cities: City[],
   forecasts: ForecastDistribution[],
   factors: LatentFactor[],
-  weights: PreferenceWeights
+  weights: Record<string, number>
 ): Promise<AdvocateResult> {
   const prompt = buildAdvocatePrompt(utilities, cities, forecasts, factors, weights);
   return await callLLM(prompt, advocateSchema);
 }
 
 // --- Calibration: Real-world data for grounding forecasts ---
-
-export { type CalibrationData } from "@/types";
 
 export async function fetchCalibrationData(
   cities: City[],

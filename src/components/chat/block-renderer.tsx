@@ -1,14 +1,11 @@
 "use client";
 
-import { ChatBlock } from "@/types";
+import type { ChatBlock, TextBlock, StageDividerBlock, ActionButtonsBlock } from "@/lib/dellma/types";
+import { getDomainConfig } from "@/lib/dellma/active-domain";
 import { TextMessage } from "./text-message";
 import { StageDivider } from "./stage-divider";
 import { ActionButtonsRow } from "./action-buttons-row";
 import { AgentBubble } from "./agent-bubble";
-import { TripParamsBlock } from "./blocks/trip-params-block";
-import { CitySelectionBlock } from "./blocks/city-selection-block";
-import { ScoutReportsBlock } from "./blocks/scout-reports-block";
-import { CalibrationBlock } from "./blocks/calibration-block";
 import { FactorEditorBlock } from "./blocks/factor-editor-block";
 import { ForecastSlidersBlock } from "./blocks/forecast-sliders-block";
 import { WeightSlidersBlock } from "./blocks/weight-sliders-block";
@@ -24,46 +21,20 @@ interface BlockRendererProps {
 }
 
 export function BlockRenderer({ block, locked, consumed, onAction }: BlockRendererProps) {
+  // NOTE: ChatBlock union includes InteractiveBlock with `kind: string`, so TypeScript
+  // cannot narrow discriminated unions in a switch. We use type assertions for blocks
+  // that carry extra properties (text, stage-divider, action-buttons).
   switch (block.kind) {
     case "text":
-      return <TextMessage block={block} />;
+      return <TextMessage block={block as TextBlock} />;
 
     case "stage-divider":
-      return <StageDivider block={block} />;
+      return <StageDivider block={block as StageDividerBlock} />;
 
     case "action-buttons":
-      return <ActionButtonsRow block={block} consumed={consumed} onAction={onAction} />;
+      return <ActionButtonsRow block={block as ActionButtonsBlock} consumed={consumed} onAction={onAction} />;
 
-    // --- Setup blocks ---
-    case "trip-params":
-      return (
-        <div className="pl-11">
-          <TripParamsBlock locked={locked} />
-        </div>
-      );
-
-    case "city-selection":
-      return (
-        <div className="pl-11">
-          <CitySelectionBlock locked={locked} />
-        </div>
-      );
-
-    case "scout-reports":
-      return (
-        <AgentBubble agent={block.agent}>
-          <ScoutReportsBlock locked={locked} />
-        </AgentBubble>
-      );
-
-    // --- Forecast blocks ---
-    case "calibration":
-      return (
-        <AgentBubble agent={block.agent}>
-          <CalibrationBlock locked={locked} />
-        </AgentBubble>
-      );
-
+    // --- Framework blocks ---
     case "factor-editor":
       return (
         <AgentBubble agent={block.agent}>
@@ -78,7 +49,6 @@ export function BlockRenderer({ block, locked, consumed, onAction }: BlockRender
         </AgentBubble>
       );
 
-    // --- Preferences blocks ---
     case "weight-sliders":
       return (
         <AgentBubble agent={block.agent}>
@@ -87,10 +57,8 @@ export function BlockRenderer({ block, locked, consumed, onAction }: BlockRender
       );
 
     case "pairwise":
-      // Pairwise comparisons not used in BT optimizer flow
       return null;
 
-    // --- Decision blocks ---
     case "ranking-results":
       return (
         <AgentBubble agent={block.agent}>
@@ -105,7 +73,6 @@ export function BlockRenderer({ block, locked, consumed, onAction }: BlockRender
         </AgentBubble>
       );
 
-    // --- Challenge blocks ---
     case "advocate-result":
       return (
         <AgentBubble agent={block.agent}>
@@ -113,7 +80,27 @@ export function BlockRenderer({ block, locked, consumed, onAction }: BlockRender
         </AgentBubble>
       );
 
-    default:
+    default: {
+      // Domain-specific blocks — look up in the domain's block registry
+      const config = getDomainConfig();
+      const DomainBlock = config.blockRegistry[block.kind];
+      if (DomainBlock) {
+        // Setup-phase blocks are rendered without AgentBubble wrapper
+        const setupBlocks = new Set(["trip-params", "city-selection"]);
+        if (setupBlocks.has(block.kind)) {
+          return (
+            <div className="pl-11">
+              <DomainBlock locked={locked} />
+            </div>
+          );
+        }
+        return (
+          <AgentBubble agent={block.agent}>
+            <DomainBlock locked={locked} />
+          </AgentBubble>
+        );
+      }
       return null;
+    }
   }
 }

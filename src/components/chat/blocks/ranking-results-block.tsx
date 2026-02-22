@@ -1,6 +1,6 @@
 "use client";
 
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/dellma/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -29,7 +29,7 @@ export function RankingResultsBlock({ locked }: RankingResultsBlockProps) {
   if (!btResult) return null;
 
   const rankingChartData = btResult.ranking.map((r) => {
-    const city = selectedCities.find((c) => c.id === r.action);
+    const city = selectedCities.find((c: { id: string }) => c.id === r.action);
     return {
       name: city?.name ?? r.action,
       emoji: "",
@@ -37,9 +37,9 @@ export function RankingResultsBlock({ locked }: RankingResultsBlockProps) {
     };
   });
 
-  const stateUtilityData = selectedCities.flatMap((city) => {
+  const stateUtilityData = selectedCities.flatMap((city: { id: string; name: string }) => {
     const stateUtils = btResult.perStateUtilities[city.id] || [];
-    return stateUtils.map((u, stateIdx) => ({
+    return stateUtils.map((u: number, stateIdx: number) => ({
       city: city.name,
       cityId: city.id,
       stateIndex: stateIdx,
@@ -52,7 +52,7 @@ export function RankingResultsBlock({ locked }: RankingResultsBlockProps) {
       {/* Rank cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {btResult.ranking.map((r, i) => {
-          const city = selectedCities.find((c) => c.id === r.action);
+          const city = selectedCities.find((c: { id: string }) => c.id === r.action);
           const stateUtils = btResult.perStateUtilities[r.action] || [];
           const minU = stateUtils.length ? Math.min(...stateUtils).toFixed(0) : "?";
           const maxU = stateUtils.length ? Math.max(...stateUtils).toFixed(0) : "?";
@@ -145,8 +145,8 @@ export function RankingResultsBlock({ locked }: RankingResultsBlockProps) {
               <YAxis type="number" dataKey="utility" domain={[0, 100]} name="Utility" />
               <ZAxis range={[40, 40]} />
               <Tooltip formatter={(value) => [Number(value).toFixed(1), "Utility"]} />
-              {selectedCities.map((city, i) => {
-                const cityData = stateUtilityData.filter((d) => d.cityId === city.id);
+              {selectedCities.map((city: { id: string; name: string }, i: number) => {
+                const cityData = stateUtilityData.filter((d: { cityId: string }) => d.cityId === city.id);
                 return (
                   <Scatter
                     key={city.id}

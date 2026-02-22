@@ -1,27 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/dellma/store";
+import { getDomainConfig } from "@/lib/dellma/active-domain";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
-import { Sparkle, Coins, Plane, Map } from "lucide-react";
-import { type LucideIcon } from "lucide-react";
 
 interface WeightSlidersBlockProps {
   locked: boolean;
 }
 
-const weightLabels: { key: "experience" | "cost" | "convenience" | "novelty"; label: string; Icon: LucideIcon; desc: string }[] = [
-  { key: "experience", label: "Experience", Icon: Sparkle, desc: "Weather, activities, cultural richness" },
-  { key: "cost", label: "Cost", Icon: Coins, desc: "Budget efficiency, value for money" },
-  { key: "convenience", label: "Convenience", Icon: Plane, desc: "Travel time, disruption risk, visa ease" },
-  { key: "novelty", label: "Novelty", Icon: Map, desc: "Uniqueness, cultural difference" },
-];
-
 export function WeightSlidersBlock({ locked }: WeightSlidersBlockProps) {
   const { weights, setWeights } = useStore();
-  const [localWeights, setLocalWeights] = useState(weights);
+  const config = getDomainConfig();
+  const dimensions = config.preferenceDimensions;
+
+  const [localWeights, setLocalWeights] = useState<Record<string, number>>(weights);
 
   // Sync local weights to store on change
   useEffect(() => {
@@ -30,11 +25,11 @@ export function WeightSlidersBlock({ locked }: WeightSlidersBlockProps) {
     }
   }, [localWeights, locked, setWeights]);
 
-  const updateWeight = (key: keyof typeof localWeights, value: number) => {
+  const updateWeight = (key: string, value: number) => {
     const newWeights = { ...localWeights, [key]: value };
     const total = Object.values(newWeights).reduce((s, v) => s + v, 0);
     if (total > 0) {
-      for (const k of Object.keys(newWeights) as (keyof typeof newWeights)[]) {
+      for (const k of Object.keys(newWeights)) {
         newWeights[k] = newWeights[k] / total;
       }
     }
@@ -47,20 +42,20 @@ export function WeightSlidersBlock({ locked }: WeightSlidersBlockProps) {
         <CardTitle className="text-base">Priority Weights</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
-        {weightLabels.map(({ key, label, Icon, desc }) => (
+        {dimensions.map(({ key, label, Icon, description }) => (
           <div key={key} className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Icon className="w-4 h-4 text-muted-foreground" strokeWidth={1.8} />
                 <span className="font-medium text-sm">{label}</span>
-                <span className="text-xs text-muted-foreground">— {desc}</span>
+                <span className="text-xs text-muted-foreground">— {description}</span>
               </div>
               <Badge variant="outline" className="font-mono text-xs">
-                {(localWeights[key] * 100).toFixed(0)}%
+                {((localWeights[key] ?? 0) * 100).toFixed(0)}%
               </Badge>
             </div>
             <Slider
-              value={[localWeights[key] * 100]}
+              value={[(localWeights[key] ?? 0) * 100]}
               min={5}
               max={70}
               step={1}

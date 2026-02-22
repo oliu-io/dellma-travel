@@ -1,4 +1,5 @@
-import { City, LatentFactor, ForecastDistribution, PreferenceWeights, UtilityScore, ScoutReport, CalibrationData, DestinationContext } from "@/types";
+import type { LatentFactor, ForecastDistribution, UtilityScore } from "@/lib/dellma/types";
+import type { City, ScoutReport, CalibrationData, DestinationContext } from "../types";
 
 export function buildScoutPrompt(
   cities: City[],
@@ -9,7 +10,6 @@ export function buildScoutPrompt(
   departureDate: string,
   destinationContexts?: DestinationContext[] | null,
 ): string {
-  // Build per-city context section from Wikipedia + REST Countries
   let contextSection = "";
   if (destinationContexts && destinationContexts.length > 0) {
     const contextLines = destinationContexts.map((ctx) => {
@@ -62,7 +62,6 @@ export function buildStateEnumerationPrompt(
   tripParams: { budget: number; duration: number; departureDate: string; travelStyle: string },
   calibrationData?: CalibrationData | null,
 ): string {
-  // Build real-world data section if available
   let calibrationSection = "";
   if (calibrationData) {
     const lines: string[] = [];
@@ -166,7 +165,6 @@ IMPORTANT: For weather-related and flight-cost factors, your probability distrib
     }
   }
 
-  // Separate per-city and shared factors
   const perCityFactors = factors.filter(f => f.cityId);
   const sharedFactors = factors.filter(f => !f.cityId);
 
@@ -215,15 +213,13 @@ export function buildOptimizerPrompt(
   cities: City[],
   forecasts: ForecastDistribution[],
   factors: LatentFactor[],
-  weights: PreferenceWeights
+  weights: Record<string, number>
 ): string {
+  const weightEntries = Object.entries(weights).map(([k, v]) => `- ${k}: ${v.toFixed(2)}`).join("\n");
   return `You are the Optimizer Agent. Compute expected utility for each destination.
 
 Preference weights (user-specified, normalized to sum to 1):
-- Experience (weather, crowds, activities): ${weights.experience.toFixed(2)}
-- Cost (budget efficiency): ${weights.cost.toFixed(2)}
-- Convenience (flight time, disruption risk, visa): ${weights.convenience.toFixed(2)}
-- Novelty (uniqueness, cultural difference): ${weights.novelty.toFixed(2)}
+${weightEntries}
 
 Cities: ${cities.map(c => `${c.name} (${c.id})`).join(", ")}
 
@@ -233,7 +229,7 @@ ${factors.map(f => `${f.name} (${f.id}): ${f.plausibleValues.map(v => `${v.label
 Forecast distributions (probability of each value for each city):
 ${JSON.stringify(forecasts, null, 2)}
 
-For each city, compute a utility score (0-100) for each component (experience, cost, convenience, novelty) by reasoning about how the probability-weighted states affect each component.
+For each city, compute a utility score (0-100) for each component by reasoning about how the probability-weighted states affect each component.
 
 The expectedUtility should be the weighted sum: sum(breakdown[k] * weight[k]) for each component.`;
 }
@@ -243,10 +239,11 @@ export function buildAdvocatePrompt(
   cities: City[],
   forecasts: ForecastDistribution[],
   factors: LatentFactor[],
-  weights: PreferenceWeights
+  weights: Record<string, number>
 ): string {
   const topCity = [...utilities].sort((a, b) => b.expectedUtility - a.expectedUtility)[0];
   const cityName = cities.find(c => c.id === topCity.cityId)?.name ?? topCity.cityId;
+  const weightStr = Object.entries(weights).map(([k, v]) => `${k}=${v}`).join(", ");
 
   return `You are the Devil's Advocate Agent. The Optimizer recommends **${cityName}** with utility ${topCity.expectedUtility.toFixed(1)}.
 
@@ -255,11 +252,12 @@ ${utilities
   .sort((a, b) => b.expectedUtility - a.expectedUtility)
   .map((u, i) => {
     const c = cities.find(c => c.id === u.cityId);
-    return `${i + 1}. ${c?.name} — utility ${u.expectedUtility.toFixed(1)} (exp: ${u.breakdown.experience.toFixed(0)}, cost: ${u.breakdown.cost.toFixed(0)}, conv: ${u.breakdown.convenience.toFixed(0)}, nov: ${u.breakdown.novelty.toFixed(0)})`;
+    const bkd = Object.entries(u.breakdown).map(([k, v]) => `${k}: ${v.toFixed(0)}`).join(", ");
+    return `${i + 1}. ${c?.name} — utility ${u.expectedUtility.toFixed(1)} (${bkd})`;
   })
   .join("\n")}
 
-User weights: experience=${weights.experience}, cost=${weights.cost}, convenience=${weights.convenience}, novelty=${weights.novelty}
+User weights: ${weightStr}
 
 Your job: challenge the recommendation. Identify:
 1. The biggest risks to the top choice (which latent factors going wrong would hurt most)

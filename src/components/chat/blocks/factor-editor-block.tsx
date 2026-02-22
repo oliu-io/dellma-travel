@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/dellma/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LatentFactor } from "@/types";
+import type { LatentFactor } from "@/lib/dellma/types";
 import { Globe, Plus, X, Check } from "lucide-react";
-import { CityIcon } from "@/components/city-icon";
+import { CityIcon } from "@/domains/travel/blocks/city-icon";
 
 interface FactorEditorBlockProps {
   locked: boolean;
@@ -40,11 +40,11 @@ export function FactorEditorBlock({ locked }: FactorEditorBlockProps) {
 
   const sharedFactors = latentFactors.filter((f) => !f.cityId);
   const factorsByCity = selectedCities
-    .map((city) => ({
+    .map((city: { id: string; name: string; country: string; icon: string }) => ({
       city,
       factors: latentFactors.filter((f) => f.cityId === city.id),
     }))
-    .filter((g) => g.factors.length > 0);
+    .filter((g: { factors: unknown[] }) => g.factors.length > 0);
 
   const handleAddValue = (factorId: string) => {
     if (!newValueLabel.trim()) return;
@@ -185,7 +185,7 @@ export function FactorEditorBlock({ locked }: FactorEditorBlockProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Per-destination groups */}
-        {factorsByCity.map(({ city, factors: cityFactors }) => (
+        {factorsByCity.map(({ city, factors: cityFactors }: { city: { id: string; name: string; country: string; icon: string }; factors: LatentFactor[] }) => (
           <div key={city.id} className="space-y-2">
             <div className="flex items-center gap-2 pb-1 border-b">
               <CityIcon icon={city.icon} className="w-4 h-4 text-muted-foreground" />

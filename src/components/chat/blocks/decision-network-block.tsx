@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState, useCallback } from "react";
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/dellma/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import * as d3 from "d3";
 
@@ -86,7 +86,7 @@ export function DecisionNetworkBlock({ locked }: DecisionNetworkBlockProps) {
     });
 
     // 2. Action nodes (cities)
-    selectedCities.forEach((city, i) => {
+    selectedCities.forEach((city: { id: string; name: string; icon: string }, i: number) => {
       const eu = btResult.expectedUtilities[city.id] ?? 0;
       nodes.push({
         id: `action-${city.id}`,
@@ -108,7 +108,7 @@ export function DecisionNetworkBlock({ locked }: DecisionNetworkBlockProps) {
     });
 
     // 3. Leaf nodes — top K states per action
-    selectedCities.forEach((city, cityIdx) => {
+    selectedCities.forEach((city: { id: string }, cityIdx: number) => {
       const stateUtils = btResult.perStateUtilities[city.id] || [];
       const stateProbs = btResult.stateProbs?.[city.id] || [];
 

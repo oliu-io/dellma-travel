@@ -1,6 +1,6 @@
 "use client";
 
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/dellma/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -19,7 +19,7 @@ export function AdvocateResultBlock({ locked }: AdvocateResultBlockProps) {
     (a, b) => b.expectedUtility - a.expectedUtility
   );
   const topCity = sortedUtilities[0];
-  const topCityData = selectedCities.find((c) => c.id === topCity?.cityId);
+  const topCityData = selectedCities.find((c: { id: string }) => c.id === topCity?.cityId);
 
   const severityColor = (s: string) => {
     switch (s) {

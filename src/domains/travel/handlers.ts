@@ -1,6 +1,9 @@
-"use client";
+// ============================================================================
+// Travel Domain — Chat Action Handlers
+// ============================================================================
 
-import { useStore } from "./store";
+import { useStore } from "@/lib/dellma/store";
+import type { ScoutReport } from "./types";
 import {
   runScoutAgent,
   fetchDestinationContexts,
@@ -9,88 +12,13 @@ import {
   runForecasterAgent,
   runBTOptimizer,
   runAdvocateAgent,
-} from "./agents";
-
-/**
- * Seed the initial chat blocks when the chat container mounts.
- * Called once on mount (if chatBlocks is empty).
- */
-export function seedInitialChat() {
-  const store = useStore.getState();
-  if (store.chatBlocks.length > 0) return; // already seeded
-
-  store.addChatBlock({
-    kind: "stage-divider",
-    agent: "system",
-    title: "Trip Setup",
-  });
-
-  store.addTextMessage(
-    "system",
-    "Welcome! Let's find your ideal travel destination together. I'll guide you through a structured decision process — we'll explore options, understand uncertainties, and find what truly fits your preferences. Start by setting your trip details below."
-  );
-
-  store.addChatBlock({
-    kind: "trip-params",
-    agent: "system",
-  });
-
-  store.addChatBlock({
-    kind: "city-selection",
-    agent: "system",
-  });
-
-  store.addChatBlock({
-    kind: "action-buttons",
-    agent: "scout",
-    buttons: [
-      { label: "Run Scout Agent", action: "run-scout", variant: "default" },
-    ],
-  });
-}
-
-/**
- * Central action dispatcher — handles all button clicks from ActionButtonsRow.
- */
-export async function dispatchChatAction(action: string) {
-  switch (action) {
-    case "run-scout":
-      await handleRunScout();
-      break;
-    case "proceed-forecast":
-      await handleProceedForecast();
-      break;
-    case "run-calibrate":
-      await handleRunCalibrate();
-      break;
-    case "run-enumerate":
-      await handleRunEnumerate();
-      break;
-    case "run-forecast":
-      await handleRunForecast();
-      break;
-    case "proceed-preferences":
-      handleProceedPreferences();
-      break;
-    case "run-optimizer":
-      await handleRunOptimizer();
-      break;
-    case "proceed-challenge":
-      handleProceedChallenge();
-      break;
-    case "run-advocate":
-      await handleRunAdvocate();
-      break;
-    default:
-      console.warn(`Unknown chat action: ${action}`);
-  }
-}
+} from "./agents/runners";
 
 // ===========================================================================
-// Phase 2 Handlers: Setup
+// Phase 1: Setup
 // ===========================================================================
 
-async function handleRunScout() {
+export async function handleRunScout() {
   const store = useStore.getState();
   const { selectedCities, departureCity, tripParams } = store;
 
@@ -130,7 +58,7 @@ async function handleRunScout() {
       contexts
     );
 
-    const reportMap: Record<string, (typeof reports)[0]> = {};
+    const reportMap: Record<string, ScoutReport> = {};
     for (const r of reports) {
       reportMap[r.cityId] = r;
     }
@@ -142,13 +70,11 @@ async function handleRunScout() {
       "success"
     );
 
-    // Add scout reports block
     store.addChatBlock({
       kind: "scout-reports",
       agent: "scout",
     });
 
-    // Add next action buttons
     store.addChatBlock({
       kind: "action-buttons",
       agent: "system",
@@ -168,7 +94,7 @@ async function handleRunScout() {
   store.setLoading(false);
 }
 
-async function handleProceedForecast() {
+export async function handleProceedForecast() {
   const store = useStore.getState();
   store.setTripParams({ ...store.tripParams }); // commit current params
   store.setStage("forecast");
@@ -267,10 +193,10 @@ async function handleProceedForecast() {
 }
 
 // ===========================================================================
-// Phase 3 Handlers: Forecasting
+// Phase 2: Forecasting
 // ===========================================================================
 
-async function handleRunCalibrate() {
+export async function handleRunCalibrate() {
   const store = useStore.getState();
   const { selectedCities, departureCity, tripParams } = store;
 
@@ -289,7 +215,6 @@ async function handleRunCalibrate() {
       "success"
     );
 
-    // Show calibration display
     store.addChatBlock({
       kind: "calibration",
       agent: "forecaster",
@@ -320,7 +245,7 @@ async function handleRunCalibrate() {
   store.setLoading(false);
 }
 
-async function handleRunEnumerate() {
+export async function handleRunEnumerate() {
   const store = useStore.getState();
   const { selectedCities, departureCity, scoutReports, tripParams, calibrationData } = store;
 
@@ -369,7 +294,7 @@ async function handleRunEnumerate() {
   store.setLoading(false);
 }
 
-async function handleRunForecast() {
+export async function handleRunForecast() {
   const store = useStore.getState();
   const { selectedCities, latentFactors, tripParams, calibrationData } = store;
 
@@ -416,10 +341,10 @@ async function handleRunForecast() {
 }
 
 // ===========================================================================
-// Phase 4 Handlers: Preferences, Decision, Challenge
+// Phase 3: Preferences, Decision, Challenge
 // ===========================================================================
 
-function handleProceedPreferences() {
+export function handleProceedPreferences() {
   const store = useStore.getState();
   store.setStage("preferences");
 
@@ -448,7 +373,7 @@ function handleProceedPreferences() {
   });
 }
 
-async function handleRunOptimizer() {
+export async function handleRunOptimizer() {
   const store = useStore.getState();
   const { selectedCities, latentFactors, forecasts, weights } = store;
 
@@ -475,11 +400,11 @@ async function handleRunOptimizer() {
     const utilities = result.ranking.map((r) => ({
       cityId: r.action,
       expectedUtility: r.expectedUtility,
-      breakdown: { experience: 0, cost: 0, convenience: 0, novelty: 0 },
+      breakdown: {} as Record<string, number>,
     }));
     store.setUtilities(utilities);
 
-    const topCity = selectedCities.find((c) => c.id === result.ranking[0]?.action);
+    const topCity = selectedCities.find((c: { id: string }) => c.id === result.ranking[0]?.action);
     store.addTextMessage(
       "optimizer",
       `Optimization complete! Top recommendation: ${topCity?.name ?? result.ranking[0]?.action} (EU: ${result.ranking[0]?.expectedUtility.toFixed(1)}) based on ${result.nPairwiseComparisons} pairwise comparisons across ${result.nBatches} microbatches.`,
@@ -515,7 +440,7 @@ async function handleRunOptimizer() {
   store.setLoading(false);
 }
 
-function handleProceedChallenge() {
+export function handleProceedChallenge() {
   const store = useStore.getState();
   store.setStage("challenge");
 
@@ -534,7 +459,7 @@ function handleProceedChallenge() {
   });
 }
 
-async function handleRunAdvocate() {
+export async function handleRunAdvocate() {
   const store = useStore.getState();
   const { utilities, selectedCities, forecasts, latentFactors, weights } = store;
 

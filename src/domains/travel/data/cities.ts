@@ -1,4 +1,4 @@
-import { City } from "@/types";
+import type { City } from "../types";
 
 // Suggested destinations — lightweight, no hardcoded state assumptions.
 // The Scout agent will infer context; the Forecaster will enumerate latent factors.

@@ -1,11 +1,11 @@
 "use client";
 
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/dellma/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Globe } from "lucide-react";
-import { CityIcon } from "@/components/city-icon";
+import { CityIcon } from "@/domains/travel/blocks/city-icon";
 
 interface ForecastSlidersBlockProps {
   locked: boolean;
@@ -23,11 +23,11 @@ export function ForecastSlidersBlock({ locked }: ForecastSlidersBlockProps) {
 
   const sharedFactors = latentFactors.filter((f) => !f.cityId);
   const factorsByCity = selectedCities
-    .map((city) => ({
+    .map((city: { id: string; name: string; country: string; icon: string }) => ({
       city,
       factors: latentFactors.filter((f) => f.cityId === city.id),
     }))
-    .filter((g) => g.factors.length > 0);
+    .filter((g: { factors: unknown[] }) => g.factors.length > 0);
 
   const getForecast = (factorId: string, cityId: string) => {
     return forecasts.find(
@@ -37,12 +37,12 @@ export function ForecastSlidersBlock({ locked }: ForecastSlidersBlockProps) {
 
   const renderForecastFactor = (factor: typeof latentFactors[number]) => {
     const citiesToShow = factor.cityId
-      ? selectedCities.filter((c) => c.id === factor.cityId)
+      ? selectedCities.filter((c: { id: string }) => c.id === factor.cityId)
       : selectedCities;
     return (
       <div key={factor.id} className="space-y-3 p-3 rounded-lg bg-muted/20">
         <div className="font-medium text-sm">{factor.name}</div>
-        {citiesToShow.map((city) => {
+        {citiesToShow.map((city: { id: string; name: string; icon: string }) => {
           const forecast = getForecast(factor.id, city.id);
           if (!forecast) return null;
           return (
@@ -94,7 +94,7 @@ export function ForecastSlidersBlock({ locked }: ForecastSlidersBlockProps) {
 
   return (
     <div className={`space-y-4 ${locked ? "opacity-60 pointer-events-none" : ""}`}>
-      {factorsByCity.map(({ city, factors: cityFactors }) => (
+      {factorsByCity.map(({ city, factors: cityFactors }: { city: { id: string; name: string; country: string; icon: string }; factors: typeof latentFactors }) => (
         <Card key={city.id}>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">

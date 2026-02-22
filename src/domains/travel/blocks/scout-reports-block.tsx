@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/dellma/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Compass, ChevronDown, ChevronRight, AlertTriangle, Clock } from "lucide-react";
@@ -39,7 +39,7 @@ export function ScoutReportsBlock({ locked }: ScoutReportsBlockProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        {selectedCities.map((city) => {
+        {selectedCities.map((city: { id: string; name: string }) => {
           const report = scoutReports[city.id];
           if (!report) return null;
           const isExpanded = expandedCities.has(city.id);
@@ -48,7 +48,7 @@ export function ScoutReportsBlock({ locked }: ScoutReportsBlockProps) {
               key={city.id}
               className="rounded-lg border bg-background/50 overflow-hidden"
             >
-              {/* Collapsible header — always visible */}
+              {/* Collapsible header */}
               <button
                 type="button"
                 className="w-full flex items-center gap-2 p-3 text-left hover:bg-muted/30 transition-colors"
@@ -72,7 +72,7 @@ export function ScoutReportsBlock({ locked }: ScoutReportsBlockProps) {
                     {report.summary}
                   </p>
                   <div className="flex gap-1.5 flex-wrap">
-                    {report.highlights.map((h, i) => (
+                    {report.highlights.map((h: string, i: number) => (
                       <Badge key={i} variant="outline" className="text-xs">
                         {h}
                       </Badge>
@@ -84,7 +84,7 @@ export function ScoutReportsBlock({ locked }: ScoutReportsBlockProps) {
                         Considerations
                       </div>
                       <ul className="text-xs text-muted-foreground space-y-0.5">
-                        {report.considerations.map((c, i) => (
+                        {report.considerations.map((c: string, i: number) => (
                           <li key={i} className="flex gap-1.5">
                             <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0 mt-0.5" />
                             <span>{c}</span>

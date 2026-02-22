@@ -1,6 +1,6 @@
 "use client";
 
-import { TextBlock } from "@/types";
+import type { TextBlock } from "@/lib/dellma/types";
 import { AgentBubble } from "./agent-bubble";
 import { Loader2 } from "lucide-react";
 

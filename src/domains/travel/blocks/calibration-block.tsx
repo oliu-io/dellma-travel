@@ -1,9 +1,9 @@
 "use client";
 
-import { useStore } from "@/lib/store";
+import { useStore } from "@/lib/dellma/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalibrationData } from "@/types";
+import type { CalibrationData } from "../types";
 import { Radio, CloudSun, Plane, Check } from "lucide-react";
 
 interface CalibrationBlockProps {

@@ -1,6 +1,6 @@
 "use client";
 
-import { ActionButtonsBlock } from "@/types";
+import type { ActionButtonsBlock } from "@/lib/dellma/types";
 import { Button } from "@/components/ui/button";
 
 interface ActionButtonsRowProps {

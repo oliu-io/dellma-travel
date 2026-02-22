@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { useStore } from "@/lib/store";
-import { SUGGESTED_CITIES, DEFAULT_CITY_IMAGE } from "@/data/cities";
+import { useStore } from "@/lib/dellma/store";
+import { SUGGESTED_CITIES, DEFAULT_CITY_IMAGE } from "../data/cities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { City } from "@/types";
-import { CityIcon } from "@/components/city-icon";
+import type { City } from "../types";
+import { CityIcon } from "./city-icon";
 import { Check, X } from "lucide-react";
 
 interface CitySelectionBlockProps {
@@ -28,7 +28,7 @@ export function CitySelectionBlock({ locked }: CitySelectionBlockProps) {
 
   const toggleCity = (city: City) => {
     if (locked) return;
-    if (selectedCities.find((c) => c.id === city.id)) {
+    if (selectedCities.find((c: City) => c.id === city.id)) {
       removeCity(city.id);
     } else {
       addCity(city);
@@ -38,7 +38,7 @@ export function CitySelectionBlock({ locked }: CitySelectionBlockProps) {
   const handleAddCustomCity = () => {
     if (!customCityName.trim() || locked) return;
     const id = customCityName.toLowerCase().replace(/\s+/g, "-");
-    if (selectedCities.find((c) => c.id === id)) return;
+    if (selectedCities.find((c: City) => c.id === id)) return;
     addCity({
       id,
       name: customCityName.trim(),
@@ -108,7 +108,7 @@ export function CitySelectionBlock({ locked }: CitySelectionBlockProps) {
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {SUGGESTED_CITIES.map((city) => {
-            const selected = !!selectedCities.find((c) => c.id === city.id);
+            const selected = !!selectedCities.find((c: City) => c.id === city.id);
             const report = scoutReports[city.id];
             return (
               <Card
@@ -160,7 +160,7 @@ export function CitySelectionBlock({ locked }: CitySelectionBlockProps) {
 
       {/* Selected custom cities */}
       {selectedCities.filter(
-        (c) => !SUGGESTED_CITIES.find((s) => s.id === c.id)
+        (c: City) => !SUGGESTED_CITIES.find((s) => s.id === c.id)
       ).length > 0 && (
         <div>
           <h3 className="text-xs font-semibold mb-2 text-muted-foreground">
@@ -168,8 +168,8 @@ export function CitySelectionBlock({ locked }: CitySelectionBlockProps) {
           </h3>
           <div className="flex gap-2 flex-wrap">
             {selectedCities
-              .filter((c) => !SUGGESTED_CITIES.find((s) => s.id === c.id))
-              .map((city) => (
+              .filter((c: City) => !SUGGESTED_CITIES.find((s) => s.id === c.id))
+              .map((city: City) => (
                 <Badge
                   key={city.id}
                   variant="default"

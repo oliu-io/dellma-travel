@@ -14,7 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-/** Map from City.icon string → Lucide component */
+/** Map from City.icon string to Lucide component */
 const ICON_MAP: Record<string, LucideIcon> = {
   cherry: Cherry,
   sun: Sun,

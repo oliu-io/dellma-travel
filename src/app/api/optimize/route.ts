@@ -28,14 +28,16 @@ const rankingSchema = {
 // ── Call Anthropic API for a single ranking ────────────────────────────────
 async function callLLMRanking(
   prompt: string,
-  apiKey: string
+  apiKey: string,
+  systemPrompt?: string
 ): Promise<string[]> {
   const body = {
     model: MODEL,
     max_tokens: 2048,
     temperature: 0.2,
     system:
-      "You are a preference evaluator in a decision-making system. You rank hypothetical travel scenarios by desirability given the user's stated preferences. Be consistent and thoughtful. Consider ALL preference dimensions together.",
+      systemPrompt ??
+      "You are a preference evaluator in a decision-making system. You rank hypothetical scenarios by desirability given the user's stated preferences. Be consistent and thoughtful. Consider ALL preference dimensions together.",
     messages: [{ role: "user", content: prompt }],
     output_config: {
       format: {
@@ -76,11 +78,14 @@ function buildRankingPrompt(
   }[],
   weights: Record<string, number>,
   factorLabels: Record<string, Record<string, string>>,
-  actionLabels: Record<string, string>
+  actionLabels: Record<string, string>,
+  scenarioLabelPrefix?: string
 ): string {
   const weightDesc = Object.entries(weights)
     .map(([k, v]) => `${k}: ${(v * 100).toFixed(0)}%`)
     .join(", ");
+
+  const prefix = scenarioLabelPrefix ?? "Travel to";
 
   const scenarios = batchItems
     .map((item) => {
@@ -92,16 +97,16 @@ function buildRankingPrompt(
           factorLabels[factorId]?.[valueId] || `${factorId}=${valueId}`;
         return label;
       });
-      return `**${item.label}**: Travel to **${actionName}** where conditions are: ${stateEntries.join("; ")}`;
+      return `**${item.label}**: ${prefix} **${actionName}** where conditions are: ${stateEntries.join("; ")}`;
     })
     .join("\n");
 
-  return `You are evaluating travel scenarios for a decision-maker with these preference weights:
+  return `You are evaluating scenarios for a decision-maker with these preference weights:
 ${weightDesc}
 
-Below are ${batchItems.length} hypothetical scenarios. Each describes a destination city paired with a possible future state of the world (weather, costs, crowd levels, etc.).
+Below are ${batchItems.length} hypothetical scenarios. Each describes an action paired with a possible future state of the world.
 
-Rank ALL ${batchItems.length} scenarios from MOST desirable to LEAST desirable according to the preference weights above. Consider how each state dimension interacts with the destination.
+Rank ALL ${batchItems.length} scenarios from MOST desirable to LEAST desirable according to the preference weights above. Consider how each state dimension interacts with the action.
 
 Scenarios:
 ${scenarios}
@@ -131,6 +136,8 @@ export async function POST(req: NextRequest) {
       nSamples = 16,
       batchSize = 16,
       overlap = 4,
+      systemPrompt,
+      scenarioPrefix,
     } = input;
 
     // ── Phase 1: Prepare microbatches via Python ──────────────────────────
@@ -190,10 +197,11 @@ export async function POST(req: NextRequest) {
           batchItems,
           weights,
           factorLabels,
-          actionLabels || {}
+          actionLabels || {},
+          scenarioPrefix
         );
 
-        return callLLMRanking(prompt, apiKey).then((rankedLabels) => {
+        return callLLMRanking(prompt, apiKey, systemPrompt).then((rankedLabels) => {
           // Convert ranked labels ("Item 5", "Item 12", ...) to position indices
           // rankedLabels[0] is best, rankedLabels[last] is worst
           // We need to map to batch-internal positions

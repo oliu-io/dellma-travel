@@ -1,24 +1,7 @@
 "use client";
 
-import { AgentId } from "@/types";
-import {
-  Compass,
-  BarChart3,
-  SlidersHorizontal,
-  Sparkles,
-  ShieldQuestion,
-  Bike,
-} from "lucide-react";
-import { type LucideIcon } from "lucide-react";
-
-const agentMeta: Record<AgentId, { Icon: LucideIcon; label: string; color: string; bgColor: string }> = {
-  scout:      { Icon: Compass,            label: "Scout",       color: "text-amber-700",   bgColor: "bg-amber-100" },
-  forecaster: { Icon: BarChart3,           label: "Forecaster",  color: "text-teal-700",    bgColor: "bg-teal-100" },
-  preference: { Icon: SlidersHorizontal,   label: "Preference",  color: "text-orange-700",  bgColor: "bg-orange-100" },
-  optimizer:  { Icon: Sparkles,            label: "Optimizer",   color: "text-emerald-700", bgColor: "bg-emerald-100" },
-  advocate:   { Icon: ShieldQuestion,      label: "Advocate",    color: "text-rose-700",    bgColor: "bg-rose-100" },
-  system:     { Icon: Bike,                label: "DeLLMa",      color: "text-stone-600",   bgColor: "bg-stone-100" },
-};
+import type { AgentId } from "@/lib/dellma/types";
+import { getDomainConfig } from "@/lib/dellma/active-domain";
 
 interface AgentBubbleProps {
   agent: AgentId;
@@ -26,7 +9,8 @@ interface AgentBubbleProps {
 }
 
 export function AgentBubble({ agent, children }: AgentBubbleProps) {
-  const meta = agentMeta[agent] ?? agentMeta.system;
+  const config = getDomainConfig();
+  const meta = config.agentMeta[agent] ?? config.agentMeta.system;
   const { Icon } = meta;
 
   return (

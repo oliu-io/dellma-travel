@@ -1,30 +1,18 @@
 "use client";
 
-import { StageDividerBlock } from "@/types";
-import {
-  Map,
-  BarChart3,
-  SlidersHorizontal,
-  Sparkles,
-  ShieldQuestion,
-  Pin,
-} from "lucide-react";
-import { type LucideIcon } from "lucide-react";
-
-const stageIcons: Record<string, LucideIcon> = {
-  "Trip Setup": Map,
-  "Forecasting": BarChart3,
-  "Preferences": SlidersHorizontal,
-  "Decision": Sparkles,
-  "Challenge": ShieldQuestion,
-};
+import type { StageDividerBlock } from "@/lib/dellma/types";
+import { getDomainConfig } from "@/lib/dellma/active-domain";
+import { Pin } from "lucide-react";
 
 interface StageDividerProps {
   block: StageDividerBlock;
 }
 
 export function StageDivider({ block }: StageDividerProps) {
-  const Icon = stageIcons[block.title] ?? Pin;
+  const config = getDomainConfig();
+  // Find stage by label match
+  const stage = config.stages.find((s) => block.title.includes(s.label));
+  const Icon = stage?.Icon ?? Pin;
 
   return (
     <div className="flex items-center gap-3 py-4">
